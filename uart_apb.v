@@ -16,7 +16,9 @@ module uart_apb(
   input rx_enable,
   input ser_in,
   output ser_out,
-  output reg apb_done
+  output reg apb_done,
+  output tx_done,
+  output rx_done
 );
 
 reg [10:0] data_bits = 0;
@@ -37,22 +39,23 @@ wire [31:0] data_out;
   
   reg[1:0] APB_state = APB_IDLE;
   
-  uart #(.CLK_PERIOD(100)) UART
+  uart UART
   (
     .clk(pclk),
     .rst(rst),
     .data_in(data_bits),
     .data_out(data_out),
-    .baud_select(50),
+    .baud_select(1),
     .tx_enable(tx_enable),
     .rx_enable(rx_enable),
     .ser_in(ser_in),
-    .ser_out(ser_out)
+    .ser_out(ser_out),
+    .tx_done(tx_done),
+    .rx_done(rx_done)
   );
   
   always @(posedge pclk)
   begin
-    prdata <= data_out;
     case(APB_state)
       APB_IDLE:
         begin
@@ -81,13 +84,15 @@ wire [31:0] data_out;
         
         APB_READ:
         begin
-          //prdata <= data_bits;
+          prdata <= data_out;
+          apb_done <= 1'b1;
           APB_state <= APB_DONE;
         end
         
         APB_DONE:
         begin
           pready <= 0;
+          apb_done <= 0;
           APB_state <= APB_IDLE;
         end
         
