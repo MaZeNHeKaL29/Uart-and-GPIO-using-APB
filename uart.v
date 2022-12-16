@@ -1,5 +1,4 @@
 module uart
-#(parameter CLK_PERIOD = 100)
 (   input clk,
     input rst,
     input [10:0] data_in,
@@ -9,7 +8,10 @@ module uart
     input rx_enable,
     
     input ser_in,
-    output reg ser_out
+    output reg ser_out,
+    
+    output reg tx_done,
+    output reg rx_done
   );
   
   reg [31:0] baudrategen = 1;
@@ -61,10 +63,14 @@ module uart
       begin
         ser_out <= 1'b1;
         tx_bit_index <= 1'b0;
-        if(tx_enable)
+        if(tx_enable && !tx_done)
           begin
             data_out <= 0;
             tx_state <= tx_START_BIT;
+          end
+        else
+          begin
+            tx_done <= 1'b0;
           end
       end
     tx_START_BIT:
@@ -108,6 +114,7 @@ module uart
         if(tick)
           begin
             ser_out <= 1'b1;
+            tx_done <= 1'b1;
             tx_state <= tx_IDLE;
           end
       end
@@ -120,6 +127,7 @@ module uart
     rx_IDLE:
       begin
         rx_bit_index <= 1'b0;
+        rx_done <= 1'b0;
         if(rx_enable)
           begin
             data_out <= 0;
@@ -176,6 +184,7 @@ module uart
             if(ser_in != 1'b1)
               begin
               end
+            rx_done <= 1'b1;
             rx_state <= rx_IDLE;
           end
       end
