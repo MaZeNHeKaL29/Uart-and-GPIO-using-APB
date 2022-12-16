@@ -31,9 +31,12 @@ module uart_tb ();
   reg ser_in_rx;
   wire pslevrr_tx;
   wire pslevrr_rx;
-  reg tx_enable;
-  reg rx_enable;
-  wire apb_done;
+  reg tx_enable = 0;
+  reg rx_enable = 0;
+  wire apb_done_tx;
+  wire apb_done_rx;
+  wire tx_done;
+  wire rx_done;
   
   always
     #(c_CLOCK_PERIOD_NS/2) r_Clock <= !r_Clock;
@@ -54,7 +57,8 @@ module uart_tb ();
     .ser_in(ser_in_tx),
     .ser_out(ser_out_tx),
     .tx_enable(tx_enable),
-    .apb_done(apb_done)
+    .apb_done(apb_done_tx),
+    .tx_done(tx_done)
   );
   
   uart_apb  UART_Receive_INST(
@@ -71,7 +75,9 @@ module uart_tb ();
     .prdata(prdata_rx),
     .ser_in(ser_in_rx),
     .ser_out(ser_out_rx),
-    .rx_enable(rx_enable)
+    .rx_enable(rx_enable),
+    .apb_done(apb_done_rx),
+    .rx_done(rx_done)
   );
      
   initial
@@ -85,13 +91,32 @@ module uart_tb ();
     
   always @(posedge r_Clock)
   begin
-    if(apb_done)
+    if(apb_done_tx ||  tx_done)
       begin
         psel_tx <= 1'b0;
         pwrite_tx <= 1'b0;
         penable_tx <= 1'b0;
-        tx_enable <= 1'b1;
-        rx_enable <= 1'b1;
+        tx_enable <= tx_enable ^ 1'b1;
+        rx_enable <= rx_enable ^ 1'b1;
+      end
+    if(rx_done)
+      begin
+        psel_rx <= 1'b1;
+        pwrite_rx <= 1'b0;
+        @(posedge r_Clock);
+        penable_rx <= 1'b1;
+        tx_enable <= 1'b0;
+       
+ rx_enable <= 1'b0;
+      end
+    if(apb_done_rx)
+      begin
+        psel_rx <= 1'b0;
+        pwrite_rx <= 1'b0;
+        penable_rx <= 1'b0;
+        tx_enable <= 1'b0;
+       
+ rx_enable <= 1'b0;
       end
   end
   
@@ -104,3 +129,4 @@ module uart_tb ();
   
   
 endmodule
+
