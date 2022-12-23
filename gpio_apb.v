@@ -11,7 +11,7 @@ module gpio_apb(
   input wire [31:0] pwdata,
   input wire [31:0] padd,
   output reg pslevrr,
-  output [31:0]  prdata,
+  output  [31:0]  prdata,
   output reg apb_done,
   output write_done,
   output read_done
@@ -19,7 +19,6 @@ module gpio_apb(
 
 
 reg data_in;
-wire data_out;
 
 reg write;
 reg read;
@@ -51,8 +50,12 @@ gpio GPIO(
   reg[1:0] APB_state = APB_IDLE;
   
   
-  always @(posedge pclk)
+  always @(posedge pclk, posedge rst)
   begin
+    if(rst)
+      begin
+        APB_state = APB_IDLE;
+      end
     case(APB_state)
       APB_IDLE:
         begin
@@ -79,7 +82,14 @@ gpio GPIO(
         
         APB_WRITE:
         begin
-          data_in <= pwdata[0];
+          if(pstrb[0] != 1)
+            begin
+              pslevrr <= 1'b1;
+            end
+          else
+            begin
+              data_in <= pwdata[0];
+            end    
           apb_done <= 1'b1;
           write <= 1'b0;
           APB_state <= APB_DONE;          
@@ -93,6 +103,7 @@ gpio GPIO(
         
         APB_DONE:
         begin
+          pslevrr <= 1'b0;
           pready <= 0;
           apb_done <= 0;
           read <= 1'b0;

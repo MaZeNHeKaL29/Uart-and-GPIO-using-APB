@@ -1,9 +1,9 @@
 module uart
 (   input clk,
     input rst,
-    input [10:0] data_in,
+    input [7:0] data_in,
     output reg [31:0] data_out,
-    input [31:0] baud_select,
+    input [7:0] baud_select,
     input tx_enable,
     input rx_enable,
     
@@ -56,8 +56,12 @@ module uart
   reg [4:0] rx_bit_index = 0;
   reg parity_even = 0;
   
-  always @(posedge clk)
+  always @(posedge clk,posedge rst)
   begin
+    if(rst)
+      begin
+        tx_state = tx_IDLE;
+      end
     case(tx_state)
     tx_IDLE:
       begin
@@ -89,6 +93,11 @@ module uart
               begin
                 parity_even = parity_even ^ 1'b1;
               end
+         	  else
+         	    begin
+         	      parity_even = parity_even;
+       	      end
+            
             if(tx_bit_index < 7)
               begin
                 tx_bit_index <= tx_bit_index + 1'b1;
@@ -121,8 +130,12 @@ module uart
     endcase
   end
   
-  always @(posedge clk)
+  always @(posedge clk, posedge rst)
   begin
+    if(rst)
+      begin
+        rx_state = rx_IDLE;
+      end
     case(rx_state)
     rx_IDLE:
       begin

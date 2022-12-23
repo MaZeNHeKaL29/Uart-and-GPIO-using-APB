@@ -6,7 +6,7 @@ module uart_apb(
   input wire psel,  //select for the slave in APB
   input wire penable,  //enable signal for APB bus
   input wire pwrite, 
-  input wire [31:0] pstrb,  
+  input wire [3:0] pstrb,  
   output reg pready,  
   input wire [31:0] pwdata,
   input wire [31:0] padd,
@@ -15,13 +15,14 @@ module uart_apb(
   input tx_enable,
   input rx_enable,
   input ser_in,
+  input [7:0] baud_select,
   output ser_out,
   output reg apb_done,
   output tx_done,
   output rx_done
 );
 
-reg [10:0] data_bits = 0;
+reg [7:0] data_bits = 0;
 wire [31:0] data_out;
 
 
@@ -45,7 +46,7 @@ wire [31:0] data_out;
     .rst(rst),
     .data_in(data_bits),
     .data_out(data_out),
-    .baud_select(1),
+    .baud_select(baud_select),
     .tx_enable(tx_enable),
     .rx_enable(rx_enable),
     .ser_in(ser_in),
@@ -54,8 +55,12 @@ wire [31:0] data_out;
     .rx_done(rx_done)
   );
   
-  always @(posedge pclk)
+  always @(posedge pclk, posedge rst)
   begin
+    if(rst)
+      begin
+        APB_state = APB_IDLE;
+      end
     case(APB_state)
       APB_IDLE:
         begin
@@ -77,20 +82,36 @@ wire [31:0] data_out;
         
         APB_WRITE:
         begin
-          data_bits <= pwdata[10:0];
+          //report error if there is invalid data  sent to uart module
+          if(pstrb[0] != 1)
+            begin
+              pslevrr <= 1'b1;
+            end
+          else
+            begin
+              data_bits <= pwdata[7:0];
+            end          
           apb_done <= 1'b1;
           APB_state <= APB_DONE;          
         end
         
         APB_READ:
         begin
-          prdata <= data_out;
+          if(data_out === 32'bx)
+            begin
+              pslevrr <= 1'b1;
+            end
+          else
+            begin
+              prdata <= data_out;
+            end
           apb_done <= 1'b1;
           APB_state <= APB_DONE;
         end
         
         APB_DONE:
         begin
+          pslevrr <= 0;
           pready <= 0;
           apb_done <= 0;
           APB_state <= APB_IDLE;

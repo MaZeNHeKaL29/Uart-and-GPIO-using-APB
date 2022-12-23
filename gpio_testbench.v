@@ -44,58 +44,75 @@ module gpio_tb();
   integer pin_config = 0;
   
    initial
-    repeat(5) begin
-      @(posedge r_Clock);
-      psel <= 1'b1;
-      pwrite <= 1'b1;
-      pwdata = 32'b1;
-      pstrb[0] = 1;
-      padd = 0;
-      padd[2:0] = pin_number;
-      padd[5:3] = pin_config;
-      @(posedge r_Clock);
-      penable <= 1'b1;
+    begin
+      read_pin(pin_number, pin_config);
+      write_pin(pin_number, pin_config, 1'bx);
       
-      @(posedge apb_done);
-      @(posedge r_Clock);
-      psel <= 1'b0;
-      penable <= 1'b0;
-      pwrite <= 1'b0;
-      pstrb = 0;
+      repeat(5) begin
       
-      @(posedge write_done);
-      @(posedge r_Clock);
-      psel <= 1'b1;
-      pwrite <= 1'b0;
-      pwdata = 32'b1;
-      padd = 0;
-      padd[2:0] = pin_number;
-      padd[5:3] = pin_config;
-      @(posedge r_Clock);
-      penable <= 1'b1;
+        write_pin(pin_number, pin_config, 1'b1);
       
-      @(posedge apb_done);
-      @(posedge r_Clock);
-      psel <= 1'b0;
-      penable <= 1'b0;
-      pwrite <= 1'b0;
-      
-      @(read_done);
-      @(posedge r_Clock);
-      psel <= 1'b0;
-      penable <= 1'b0;
-      pwrite <= 1'b0;
-      pin_number = pin_number;
-      pin_config = pin_config;
-      @(posedge r_Clock);
+        read_pin(pin_number, pin_config);
+        @(posedge r_Clock);
+       	pin_number = pin_number +1;
+        pin_config = pin_config +1;
+      end
     end
     
-    always @(posedge r_Clock)
-    begin
-      if(read_done)
-        begin
-          
+    integer i;
+    
+    task write_pin(input [2:0] pin_num,input [2:0] pin_config, input data);
+      begin
+        @(posedge r_Clock);
+      	 psel <= 1'b1;
+        pwrite <= 1'b1;
+        pwdata = data;
+        pstrb[0] = 1'b1;
+        for(i=0; i<8; i = i + 1) begin
+          if(pwdata[i]===1'bx) pstrb[0] = 1'b0;
+          if(pwdata[i]===1'bz) pstrb[0] = 1'b0;
         end
-    end
+        padd = 0;
+        padd[2:0] = pin_num;
+        padd[5:3] = pin_config;
+        @(posedge r_Clock);
+        penable <= 1'b1;
+      
+        @(posedge apb_done);
+        @(posedge r_Clock);
+        psel <= 1'b0;
+        penable <= 1'b0;
+        pwrite <= 1'b0;
+        pstrb = 0;
+        @(posedge write_done);
+      end
+    endtask
+    
+    task read_pin(input [2:0] pin_num,input [2:0] pin_config);
+      begin
+        @(posedge r_Clock);
+        psel <= 1'b1;
+        pwrite <= 1'b0;
+        padd = 0;
+        padd[2:0] = pin_number;
+        padd[5:3] = pin_config;
+        @(posedge r_Clock);
+        penable <= 1'b1;
+      
+        @(posedge apb_done);
+        @(posedge r_Clock);
+        psel <= 1'b0;
+        penable <= 1'b0;
+        pwrite <= 1'b0;
+      
+        	@(read_done);
+        @(posedge r_Clock);
+        psel <= 1'b0;
+        penable <= 1'b0;
+        pwrite <= 1'b0;
+      end
+    endtask
+    
+    
   
 endmodule

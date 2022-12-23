@@ -55,6 +55,10 @@ module gpio(
   
   always @(posedge clk or rst)
   begin
+    if(rst)
+      begin
+        gpio_state = GPIO_IDLE;
+      end
     case(gpio_state)
       
       GPIO_IDLE:
@@ -69,7 +73,10 @@ module gpio(
             data_out <= 0;
             data_out[2:0] <= pin_number;
             data_out[5:3] <= pin_config;
-            data_out[6] <= gpio_pins[pin_number][pin_config];
+            if(data_out[6] === 1'bx)
+              data_out[6] <= 1'b0;
+            else
+              data_out[6] <= gpio_pins[pin_number][pin_config];
           end
         else
           begin
