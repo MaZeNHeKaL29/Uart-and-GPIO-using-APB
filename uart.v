@@ -10,6 +10,8 @@ module uart
     input ser_in,
     output reg ser_out,
     
+    output reg error,
+    
     output reg tx_done,
     output reg rx_done
   );
@@ -139,6 +141,7 @@ module uart
     case(rx_state)
     rx_IDLE:
       begin
+        error <= 1'b0;
         rx_bit_index <= 1'b0;
         rx_done <= 1'b0;
         if(rx_enable)
@@ -183,6 +186,7 @@ module uart
           begin
             if(ser_in != parity_even)
               begin
+                error <= 1'b1;
               end
             else
               rx_state <= rx_STOP_BIT;
@@ -194,9 +198,6 @@ module uart
       begin
         if(tick)
           begin
-            if(ser_in != 1'b1)
-              begin
-              end
             rx_done <= 1'b1;
             rx_state <= rx_IDLE;
           end

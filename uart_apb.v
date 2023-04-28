@@ -1,10 +1,10 @@
 `include "uart.v"
 
 module uart_apb(
-  input wire pclk,  //clock
-  input wire rst,   //reset signal
-  input wire psel,  //select for the slave in APB
-  input wire penable,  //enable signal for APB bus
+  input wire pclk,  
+  input wire rst,   
+  input wire psel,  
+  input wire penable,  
   input wire pwrite, 
   input wire [3:0] pstrb,  
   output reg pready,  
@@ -25,6 +25,8 @@ module uart_apb(
 reg [7:0] data_bits = 0;
 wire [31:0] data_out;
 
+wire error_bit;
+
 
 
 //cases for APB Bus
@@ -39,7 +41,7 @@ wire [31:0] data_out;
   parameter APB_DONE = 2'b11;
   
   reg[1:0] APB_state = APB_IDLE;
-  
+    
   uart UART
   (
     .clk(pclk),
@@ -52,8 +54,11 @@ wire [31:0] data_out;
     .ser_in(ser_in),
     .ser_out(ser_out),
     .tx_done(tx_done),
-    .rx_done(rx_done)
+    .rx_done(rx_done),
+    .error(error_bit)
   );
+  
+ 
   
   always @(posedge pclk, posedge rst)
   begin
@@ -68,12 +73,16 @@ wire [31:0] data_out;
           pslevrr <= 0;
           if(psel == 1'b1)
             begin
-              pready <= 1'b1;
-              if(pwrite == 1'b1)
+              if(!(tx_enable && rx_enable))
+                begin
+                  pready = 1'b1;
+                  pready <= 1'b1;
+                end
+              if(pwrite == 1'b1 && pready)
                 begin
                   APB_state <= APB_WRITE;
                 end
-              else
+              else if(pready)
                 begin
                   APB_state <= APB_READ;
                 end

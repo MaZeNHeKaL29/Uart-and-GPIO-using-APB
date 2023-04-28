@@ -7,7 +7,7 @@ module uart_tb ();
   
   parameter c_CLOCK_PERIOD_NS = 100;
   
-  reg r_Clock = 1;
+  reg pclk = 1;
   reg rst = 0;
   reg psel_tx = 0;
   reg psel_rx = 0;
@@ -37,14 +37,14 @@ module uart_tb ();
   wire apb_done_rx;
   wire tx_done;
   wire rx_done;
-  reg [7:0] baud_select = 50;
+  reg [7:0] baud_select = 30;
   
   always
-    #(c_CLOCK_PERIOD_NS/2) r_Clock <= !r_Clock;
+    #(c_CLOCK_PERIOD_NS/2) pclk<= !pclk;
     
   
   uart_apb  UART_Transmitt_INST(
-    .pclk(r_Clock),
+    .pclk(pclk),
     .rst(rst),
     .psel(psel_tx),
     .penable(penable_tx),
@@ -64,7 +64,7 @@ module uart_tb ();
   );
   
   uart_apb  UART_Receive_INST(
-    .pclk(r_Clock),
+    .pclk(pclk),
     .rst(rst),
     .psel(psel_rx),
     .penable(penable_rx),
@@ -94,44 +94,20 @@ module uart_tb ();
       //enable uart transmitter and receiver to start sending and receiving
       uart_tx_rx_enable();
       //reading data from receiver
+      read_rx();
+      //change baud_select
+      baud_select = 50;
       @(posedge rx_done);
-      @(posedge r_Clock); 
+      //write valid data to uart transmitter
+      write__tx(8'b11100110);
+      //enable uart transmitter and receiver to start sending and receiving
+      uart_tx_rx_enable();
+      //reading data from receiver
       read_rx();
     end
     
     
-  /*  
-  always @(posedge r_Clock)
-  begin
-    if(tx_done)
-      begin
-        psel_tx <= 1'b0;
-        pwrite_tx <= 1'b0;
-        penable_tx <= 1'b0;
-        tx_enable <= tx_enable ^ 1'b1;
-        rx_enable <= rx_enable ^ 1'b1;
-      end
-    if(rx_done)
-      begin
-        psel_rx <= 1'b1;
-        pwrite_rx <= 1'b0;
-        @(posedge r_Clock);
-        penable_rx <= 1'b1;
-        tx_enable <= 1'b0;
-       
- rx_enable <= 1'b0;
-      end
-    if(apb_done_rx)
-      begin
-        psel_rx <= 1'b0;
-        pwrite_rx <= 1'b0;
-        penable_rx <= 1'b0;
-        tx_enable <= 1'b0;
-       
- rx_enable <= 1'b0;
-      end
-  end
-  */
+ 
   
   
   //tx and rx of uart are connecting together
@@ -147,35 +123,14 @@ module uart_tb ();
     rx_enable <=  1'b0;
   end
   
+ 
+  
   integer i;
-  /*
-  task write_tx_invalid();
-    begin
-      @(posedge r_Clock);
-      psel_tx <= 1'b1;
-      pwrite_tx <= 1'b1;
-      pwdata_tx = 32'b0011x;
-      pstrb_tx[0] = 1'b1;
-      for(i=0; i<8; i = i + 1) begin
-        if(pwdata_tx[i]===1'bx) pstrb_tx[0] = 1'b0;
-        if(pwdata_tx[i]===1'bz) pstrb_tx[0] = 1'b0;
-      end
-      padd_tx = 32'b1111001;
-      @(posedge r_Clock);
-      penable_tx <= 1'b1;
-      @(posedge apb_done_tx);
-      @(posedge r_Clock);
-      psel_tx <= 1'b0;
-      pwrite_tx <= 1'b0;
-      penable_tx <= 1'b0;
-      @(posedge r_Clock);
-    end
-  endtask
-  */
+  
     
   task write__tx(input [7:0] w);
     begin
-      @(posedge r_Clock);
+      @(posedge pclk);
       psel_tx <= 1'b1;
       pwrite_tx <= 1'b1;
       pwdata_tx = w ; 
@@ -185,14 +140,14 @@ module uart_tb ();
         if(pwdata_tx[i]===1'bz) pstrb_tx[0] = 1'b0;
       end
       padd_tx = 32'b1111001;
-      @(posedge r_Clock);
+      @(posedge pclk);
       penable_tx <= 1'b1;
       @(posedge apb_done_tx);
-      @(posedge r_Clock);
+      @(posedge pclk);
       psel_tx <= 1'b0;
       pwrite_tx <= 1'b0;
       penable_tx <= 1'b0;
-      @(posedge r_Clock);
+      @(posedge pclk);
     end
   endtask
   
@@ -207,14 +162,14 @@ module uart_tb ();
   
   task read_rx();
     begin
-      @(posedge r_Clock); 
+      @(posedge pclk); 
       psel_rx <= 1'b1;
       pwrite_rx <= 1'b0;
       padd_rx = 32'b1111000;
-      @(posedge r_Clock);
+      @(posedge pclk);
       penable_rx <= 1'b1;
       @(posedge apb_done_rx);
-      @(posedge r_Clock);
+      @(posedge pclk);
       psel_rx <= 1'b0;
       pwrite_rx <= 1'b0;
       penable_rx <= 1'b0;

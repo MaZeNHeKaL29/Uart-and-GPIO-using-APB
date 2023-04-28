@@ -1,7 +1,7 @@
 
 /*
 8 pins GPIO Controller
-every pin has 5 bits
+every pin has 5 regs
 bit 0(DIR) -> GPIO direction (0 -> Input |||||| 1 -> Output)
 bit 1(DATA) -> GPIO Data 
 bit 2(INTS0) -> Interrupt Sense 1
@@ -35,6 +35,7 @@ module gpio(
   );
   
   reg [7:0] gpio_pins [0:5];
+  
   
   // pin number is determined from first 3 bits of paddr in APB Bus
   integer pin_number;

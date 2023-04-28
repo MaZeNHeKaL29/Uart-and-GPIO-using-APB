@@ -39,22 +39,31 @@ gpio GPIO(
 
 //cases for APB Bus
 
-  parameter APB_IDLE = 2'b00;
+  parameter APB_IDLE = 3'b000;
 
-  parameter APB_WRITE = 2'b01;
+  parameter APB_WRITE = 3'b001;
   
-  parameter APB_READ = 2'b10;
+  parameter APB_READ = 3'b010;
   
-  parameter APB_DONE = 2'b11;
+   parameter APB_ERROR = 3'b011;
   
-  reg[1:0] APB_state = APB_IDLE;
+  parameter APB_DONE = 3'b100;
+  
+ 
+  
+  
+  reg[2:0] APB_state = APB_IDLE;
+  
+  //GPIO pins enable clock reg, requires sending address 111111
+  reg RCGCGPIO = 0;
+  
   
   
   always @(posedge pclk, posedge rst)
   begin
     if(rst)
       begin
-        APB_state = APB_IDLE;
+        APB_state <= APB_IDLE;
       end
     case(APB_state)
       APB_IDLE:
@@ -66,16 +75,31 @@ gpio GPIO(
           read <= 1'b0;
           if(psel == 1'b1)
             begin
-              pready <= 1'b1;
-              if(pwrite == 1'b1)
+              if(RCGCGPIO == 0)
                 begin
-                  APB_state <= APB_WRITE;
-                  write <= 1'b1;
+                  if(padd == 32'b111111)
+                    begin
+                      RCGCGPIO <= 1'b1;
+                    end
+                  else
+                    begin
+                      pready <= 1'b1;
+                      APB_state <= APB_ERROR;
+                    end
                 end
               else
                 begin
-                  APB_state <= APB_READ;
-                  read <= 1'b1;
+                  pready <= 1'b1;
+                	if(pwrite == 1'b1)
+                   begin
+                    APB_state <= APB_WRITE;
+                    write <= 1'b1;
+                  end
+                	else
+                  begin
+                    APB_state <= APB_READ;
+                    read <= 1'b1;
+                  end
                 end
             end
         end
@@ -100,6 +124,15 @@ gpio GPIO(
           apb_done <= 1'b1;
           APB_state <= APB_DONE;
         end
+        
+        APB_ERROR:
+        begin
+           pready <= 1'b1;
+          pslevrr = 1'b1;
+          apb_done <= 1'b1;
+          APB_state <= APB_DONE;
+        end
+        
         
         APB_DONE:
         begin
